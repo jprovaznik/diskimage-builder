@@ -59,13 +59,15 @@ function get_repos_for_element(){
                         git --git-dir=$CACHE_PATH/.git fetch
                         git --git-dir=$CACHE_PATH/.git --work-tree=$CACHE_PATH reset --hard origin/master
                     fi
-                    sudo git clone $CACHE_PATH $REPO_DEST
+                    REPO_PATH=$CACHE_PATH
                 else
-                    sudo git clone $REPOLOCATION $REPO_DEST
+                    REPO_PATH=$REPOLOCATION
                 fi
+                sudo git clone $REPO_PATH $REPO_DEST
                 pushd $REPO_DEST
                 sudo git reset --hard $REPOREF
                 popd
+                echo "$REPO_PATH" >> $REPO_DIR/list
                 ;;
             tar)
                 # The top level directory of the tarball mightn't have a fixed name i.e.
@@ -111,7 +113,9 @@ function get_repos_for_element(){
     done < $REPO_SOURCES
 }
 
-mkdir -p ~/.cache/image-create/repository-sources/
+REPO_DIR=~/.cache/image-create/repository-sources/
+mkdir -p $REPO_DIR
+echo > $REPO_DIR/list
 
 # Get source repositories for the target
 for _SOURCEREPO in $(find $TMP_HOOKS_PATH -maxdepth 1 -name "source-repository-*" -not -name '*~'); do

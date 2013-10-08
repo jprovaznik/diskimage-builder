@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -eux
+
+# Builds local pip package repository which can then be used
+# by pypi element for installing python packages
+# the goal is to make sure that any openstack component in
+# /opt/stack/venvs will use same version of package which was
+# set in source-repository files.
+function build_package(){
+    REPO_PATH=$1
+    cd $REPO_PATH
+    local INFO_FILE=`ls *.egg-info/PKG-INFO`
+    [ -f "$INFO_FILE" ] || return 0
+    python setup.py sdist
+    cp dist/*gz $LOCAL_PKGS_DIR
+    local NAME=`grep '^Name:' $INFO_FILE|head -1|awk '{ print $2 }'`
+    local VER=`grep '^Version' $INFO_FILE|head -1|awk '{ print $2 }'`
+    echo "$NAME==$VER" >> $LOCAL_PIP_DIR/requirements.txt
+}
+
+function build_venv(){
+    virtualenv --clear $VENV_DIR
+    $VENV_DIR/bin/pip install --download-cache=$DOWNLOAD_CACHE_DIR --find-links=$LOCAL_PKGS_DIR -r $LOCAL_PIP_DIR/requirements.txt
+    # FIXME: some deps are missing:
+    $VENV_DIR/bin/pip install -d $DOWNLOAD_CACHE_DIR setuptools argparse qpid-python MySQL-python pip pbr
+}
+
+REPO_DIR=~/.cache/image-create/repository-sources/
+LOCAL_PIP_DIR=~/.cache/image-create/pip-repo
+VENV_DIR=$LOCAL_PIP_DIR/venv
+DOWNLOAD_CACHE_DIR=$LOCAL_PIP_DIR/pkgcache
+LOCAL_PKGS_DIR=$LOCAL_PIP_DIR/localpkgs
+PIP_MIRROR_DIR=~/.cache/image-create/pypi/mirror/
+
+mkdir -p $LOCAL_PIP_DIR
+mkdir -p $VENV_DIR
+mkdir -p $DOWNLOAD_CACHE_DIR/pip/openstack
+mkdir -p $LOCAL_PKGS_DIR
+mkdir -p $PIP_MIRROR_DIR
+> $LOCAL_PIP_DIR/requirements.txt
+
+for REPO in `cat $REPO_DIR/list`; do
+    [ -n "$REPO" -a -d "$REPO" ] && build_package $REPO
+done
+
+build_venv
+
+cat > $REPO_DIR/mirror.yaml <<EOF
+cache-root: $DOWNLOAD_CACHE_DIR
+
+mirrors:
+ - name: openstack
+   projects: []
+   output: $LOCAL_PIP_DIR
+EOF
+
+run-mirror -b remotes/origin/master --verbose -c $REPO_DIR/mirror.yaml --no-download

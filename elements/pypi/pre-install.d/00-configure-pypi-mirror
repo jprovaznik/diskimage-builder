@@ -19,10 +19,17 @@ else
     ONLINE=""
 fi
 
+if [ -z $CUSTOM_RELEASE ]; then
+    PRE_RELEASE=""
+else
+    PRE_RELEASE="pre = 1"
+fi
+
 cat <<EOF > ~/.pip/pip.conf
 [global]
 index-url = $PYPIURL
 $ONLINE
+$PRE_RELEASE
 log = $HOME/pip.log
 EOF
 

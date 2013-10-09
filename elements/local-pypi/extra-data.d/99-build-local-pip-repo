@@ -24,7 +24,9 @@ function build_venv(){
     rm -rf $VENV_DIR/build/*
     $VENV_DIR/bin/pip install --download-cache=$DOWNLOAD_CACHE_DIR --find-links=$LOCAL_PKGS_DIR -r $LOCAL_PIP_DIR/requirements.txt
     # FIXME: some deps are missing:
-    $VENV_DIR/bin/pip install -d $DOWNLOAD_CACHE_DIR setuptools argparse qpid-python MySQL-python pip pbr distribute
+    $VENV_DIR/bin/pip install -d $DOWNLOAD_CACHE_DIR setuptools argparse qpid-python MySQL-python pip pbr distribute virtualenv
+    # FIXME: for some reason SQLAlchemy version doesn't match requirements
+    $VENV_DIR/bin/pip install -d $DOWNLOAD_CACHE_DIR -I SQLAlchemy==0.7.9
 }
 
 REPO_DIR=~/.cache/image-create/repository-sources/
